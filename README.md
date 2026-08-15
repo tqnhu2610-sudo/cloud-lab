@@ -1,7 +1,7 @@
 # Cloud Computing Laboratory
 
-Student Name:
+Student Name:Truong Quynh Nhu
 
-Student ID:
+Student ID:235349
 
-Class:
+Class:DH23TIN06
