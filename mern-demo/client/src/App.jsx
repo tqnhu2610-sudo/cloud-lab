@@ -1,57 +1,106 @@
 import { useEffect, useState } from "react";
 
 function App() {
+    // ==============================
     // DANH SACH SINH VIEN
+    // ==============================
     const [students, setStudents] = useState([]);
 
+    // ==============================
     // DU LIEU FORM
+    // ==============================
     const [studentId, setStudentId] = useState("");
     const [name, setName] = useState("");
     const [email, setEmail] = useState("");
 
-    // CAU 59 - LAY DANH SACH SINH VIEN
-    const getStudents = () => {
-        fetch("/api/students")
-            .then((response) => response.json())
-            .then((data) => {
+    // ==============================
+    // TRANG THAI
+    // ==============================
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState("");
+
+    // ==============================
+    // DIA CHI BACKEND
+    // ==============================
+    const API_URL = "http://localhost:5000/api/students";
+
+    // ==============================
+    // LAY DANH SACH SINH VIEN
+    // ==============================
+    const getStudents = async () => {
+        try {
+            setLoading(true);
+            setError("");
+
+            const response = await fetch(API_URL);
+
+            if (!response.ok) {
+                throw new Error(
+                    `Khong the lay danh sach sinh vien. Ma loi: ${response.status}`
+                );
+            }
+
+            const data = await response.json();
+
+            console.log("Danh sach sinh vien:", data);
+
+            if (Array.isArray(data)) {
                 setStudents(data);
-            })
-            .catch((error) => {
-                console.error("Loi:", error);
-            });
+            } else {
+                setStudents([]);
+                console.error("Du lieu Backend khong phai mang:", data);
+            }
+
+        } catch (error) {
+            console.error("Loi lay danh sach:", error);
+
+            setError("Khong ket noi duoc Backend!");
+
+            setStudents([]);
+
+        } finally {
+            setLoading(false);
+        }
     };
 
+    // ==============================
+    // KHI MO TRANG
+    // ==============================
     useEffect(() => {
         getStudents();
     }, []);
 
-    // CAU 60 - THEM SINH VIEN
+    // ==============================
+    // THEM SINH VIEN
+    // ==============================
     const handleSubmit = async (e) => {
         e.preventDefault();
 
         try {
-            const response = await fetch("/api/students", {
+            const response = await fetch(API_URL, {
                 method: "POST",
+
                 headers: {
                     "Content-Type": "application/json"
                 },
+
                 body: JSON.stringify({
-                    studentId: studentId,
-                    name: name,
-                    email: email
+                    studentId: studentId.trim(),
+                    name: name.trim(),
+                    email: email.trim()
                 })
             });
 
             const data = await response.json();
 
             if (!response.ok) {
-                alert(data.message || "Them sinh vien that bai");
+                alert(data.message || "Them sinh vien that bai!");
                 return;
             }
 
             alert("Them sinh vien thanh cong!");
 
-            // XOA DU LIEU CU TRONG FORM
+            // XOA FORM
             setStudentId("");
             setName("");
             setEmail("");
@@ -60,45 +109,68 @@ function App() {
             getStudents();
 
         } catch (error) {
-            console.error("Loi:", error);
-            alert("Khong ket noi duoc Backend");
+            console.error("Loi them sinh vien:", error);
+
+            alert("Khong ket noi duoc Backend!");
         }
     };
 
-    // CAU 61 - CAP NHAT SINH VIEN
+    // ==============================
+    // CAP NHAT SINH VIEN
+    // ==============================
     const handleUpdate = async (student) => {
+
         const newStudentId = prompt(
             "Nhap MSSV moi:",
-            student.studentId
+            student.studentId || ""
         );
+
+        if (newStudentId === null) {
+            return;
+        }
 
         const newName = prompt(
             "Nhap ho ten moi:",
-            student.name
+            student.name || ""
         );
+
+        if (newName === null) {
+            return;
+        }
 
         const newEmail = prompt(
             "Nhap email moi:",
-            student.email
+            student.email || ""
         );
 
-        if (!newStudentId || !newName || !newEmail) {
-            alert("Vui long nhap day du thong tin");
+        if (newEmail === null) {
+            return;
+        }
+
+        // KIEM TRA DU LIEU
+        if (
+            !newStudentId.trim() ||
+            !newName.trim() ||
+            !newEmail.trim()
+        ) {
+            alert("Vui long nhap day du thong tin!");
             return;
         }
 
         try {
             const response = await fetch(
-                `/api/students/${student._id}`,
+                `${API_URL}/${student._id}`,
                 {
                     method: "PUT",
+
                     headers: {
                         "Content-Type": "application/json"
                     },
+
                     body: JSON.stringify({
-                        studentId: newStudentId,
-                        name: newName,
-                        email: newEmail
+                        studentId: newStudentId.trim(),
+                        name: newName.trim(),
+                        email: newEmail.trim()
                     })
                 }
             );
@@ -106,23 +178,27 @@ function App() {
             const data = await response.json();
 
             if (!response.ok) {
-                alert(data.message || "Cap nhat sinh vien that bai");
+                alert(data.message || "Cap nhat sinh vien that bai!");
                 return;
             }
 
             alert("Cap nhat sinh vien thanh cong!");
 
-            // TAI LAI DANH SACH SAU KHI SUA
+            // TAI LAI DANH SACH
             getStudents();
 
         } catch (error) {
-            console.error("Loi:", error);
-            alert("Khong ket noi duoc Backend");
+            console.error("Loi cap nhat:", error);
+
+            alert("Khong ket noi duoc Backend!");
         }
     };
 
-    // CAU 62 - XOA SINH VIEN
+    // ==============================
+    // XOA SINH VIEN
+    // ==============================
     const handleDelete = async (id) => {
+
         const confirmDelete = window.confirm(
             "Ban co chac chan muon xoa sinh vien nay?"
         );
@@ -133,7 +209,7 @@ function App() {
 
         try {
             const response = await fetch(
-                `/api/students/${id}`,
+                `${API_URL}/${id}`,
                 {
                     method: "DELETE"
                 }
@@ -142,24 +218,37 @@ function App() {
             const data = await response.json();
 
             if (!response.ok) {
-                alert(data.message || "Xoa sinh vien that bai");
+                alert(data.message || "Xoa sinh vien that bai!");
                 return;
             }
 
             alert("Xoa sinh vien thanh cong!");
 
-            // TAI LAI DANH SACH SAU KHI XOA
+            // TAI LAI DANH SACH
             getStudents();
 
         } catch (error) {
-            console.error("Loi:", error);
-            alert("Khong ket noi duoc Backend");
+            console.error("Loi xoa:", error);
+
+            alert("Khong ket noi duoc Backend!");
         }
     };
 
+    // ==============================
+    // GIAO DIEN
+    // ==============================
     return (
-        <div>
+        <div
+            style={{
+                textAlign: "center",
+                padding: "30px"
+            }}
+        >
             <h1>Quan ly sinh vien</h1>
+
+            {/* ========================= */}
+            {/* FORM THEM SINH VIEN */}
+            {/* ========================= */}
 
             <h2>Them sinh vien</h2>
 
@@ -219,32 +308,60 @@ function App() {
 
             </form>
 
+            {/* ========================= */}
+            {/* DANH SACH SINH VIEN */}
+            {/* ========================= */}
+
             <h2>Danh sach sinh vien</h2>
 
-            {students.length === 0 ? (
+            {loading ? (
+
+                <p>Dang tai danh sach sinh vien...</p>
+
+            ) : error ? (
+
+                <div>
+                    <p>{error}</p>
+
+                    <button onClick={getStudents}>
+                        Thu lai
+                    </button>
+                </div>
+
+            ) : students.length === 0 ? (
+
                 <p>Chua co sinh vien</p>
+
             ) : (
-                <ul>
+
+                <ul
+                    style={{
+                        display: "inline-block",
+                        textAlign: "left"
+                    }}
+                >
                     {students.map((student) => (
+
                         <li
                             key={student._id}
                             style={{
-                                marginBottom: "10px"
+                                marginBottom: "15px"
                             }}
                         >
                             <strong>
-                                {student.studentId}
+                                {student.studentId || "Khong co MSSV"}
                             </strong>
 
                             {" - "}
 
-                            {student.name}
+                            {student.name || "Khong co ten"}
 
                             {" - "}
 
-                            {student.email}
+                            {student.email || "Khong co email"}
 
-                            {/* NUT SUA - CAU 61 */}
+                            {/* NUT SUA */}
+
                             <button
                                 onClick={() =>
                                     handleUpdate(student)
@@ -256,7 +373,8 @@ function App() {
                                 Sua
                             </button>
 
-                            {/* NUT XOA - CAU 62 */}
+                            {/* NUT XOA */}
+
                             <button
                                 onClick={() =>
                                     handleDelete(student._id)
@@ -267,10 +385,14 @@ function App() {
                             >
                                 Xoa
                             </button>
+
                         </li>
+
                     ))}
                 </ul>
+
             )}
+
         </div>
     );
 }
