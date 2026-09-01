@@ -1,400 +1,513 @@
 import { useEffect, useState } from "react";
 
 function App() {
-    // ==============================
-    // DANH SACH SINH VIEN
-    // ==============================
-    const [students, setStudents] = useState([]);
+  // BACKEND API PORT 5000
+  const API_URL =
+    "https://fuzzy-space-computing-machine-wv94rv59rgpjfggg4-5000.app.github.dev/api/students";
 
-    // ==============================
-    // DU LIEU FORM
-    // ==============================
-    const [studentId, setStudentId] = useState("");
-    const [name, setName] = useState("");
-    const [email, setEmail] = useState("");
+  // DANH SÁCH SINH VIÊN
+  const [students, setStudents] = useState([]);
 
-    // ==============================
-    // TRANG THAI
-    // ==============================
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState("");
+  // DỮ LIỆU FORM
+  const [studentId, setStudentId] = useState("");
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
 
-    // ==============================
-    // DIA CHI BACKEND
-    // ==============================
-    const API_URL = "http://localhost:5000/api/students";
+  // ID SINH VIÊN ĐANG SỬA
+  const [editingId, setEditingId] = useState(null);
 
-    // ==============================
-    // LAY DANH SACH SINH VIEN
-    // ==============================
-    const getStudents = async () => {
-        try {
-            setLoading(true);
-            setError("");
+  // TRẠNG THÁI
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
-            const response = await fetch(API_URL);
+  // ================================
+  // LẤY DANH SÁCH SINH VIÊN
+  // ================================
+  const fetchStudents = async () => {
+    try {
+      setLoading(true);
+      setError("");
 
-            if (!response.ok) {
-                throw new Error(
-                    `Khong the lay danh sach sinh vien. Ma loi: ${response.status}`
-                );
-            }
+      console.log("Đang gọi API:", API_URL);
 
-            const data = await response.json();
+      const response = await fetch(API_URL);
 
-            console.log("Danh sach sinh vien:", data);
+      console.log("Status:", response.status);
 
-            if (Array.isArray(data)) {
-                setStudents(data);
-            } else {
-                setStudents([]);
-                console.error("Du lieu Backend khong phai mang:", data);
-            }
+      if (!response.ok) {
+        throw new Error("Không thể lấy dữ liệu sinh viên");
+      }
 
-        } catch (error) {
-            console.error("Loi lay danh sach:", error);
+      const data = await response.json();
 
-            setError("Khong ket noi duoc Backend!");
+      console.log("Dữ liệu từ Backend:", data);
 
-            setStudents([]);
+      setStudents(data);
+    } catch (err) {
+      console.error("Lỗi:", err);
+      setError("Không kết nối được Backend!");
+    } finally {
+      setLoading(false);
+    }
+  };
 
-        } finally {
-            setLoading(false);
+  // ================================
+  // CHẠY KHI MỞ ỨNG DỤNG
+  // ================================
+  useEffect(() => {
+    fetchStudents();
+  }, []);
+
+  // ================================
+  // THÊM SINH VIÊN
+  // ================================
+  const addStudent = async (e) => {
+    e.preventDefault();
+
+    if (!studentId || !name || !email) {
+      alert("Vui lòng nhập đầy đủ thông tin!");
+      return;
+    }
+
+    try {
+      const response = await fetch(API_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          studentId,
+          name,
+          email,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Không thể thêm sinh viên");
+      }
+
+      // Nhận sinh viên vừa tạo từ Backend
+      const newStudent = await response.json();
+
+      // Đưa sinh viên mới lên đầu
+      setStudents((prevStudents) => [
+        newStudent,
+        ...prevStudents,
+      ]);
+
+      // Xóa form
+      setStudentId("");
+      setName("");
+      setEmail("");
+
+      alert("Thêm sinh viên thành công!");
+    } catch (err) {
+      console.error("Lỗi thêm sinh viên:", err);
+      alert("Lỗi khi thêm sinh viên!");
+    }
+  };
+
+  // ================================
+  // BẮT ĐẦU SỬA SINH VIÊN
+  // ================================
+  const editStudent = (student) => {
+    setEditingId(student._id);
+
+    setStudentId(student.studentId);
+    setName(student.name);
+    setEmail(student.email);
+
+    // Cuộn lên đầu để thấy form
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth",
+    });
+  };
+
+  // ================================
+  // CẬP NHẬT SINH VIÊN
+  // ================================
+  const updateStudent = async (e) => {
+    e.preventDefault();
+
+    if (!studentId || !name || !email) {
+      alert("Vui lòng nhập đầy đủ thông tin!");
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        `${API_URL}/${editingId}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            studentId,
+            name,
+            email,
+          }),
         }
-    };
-
-    // ==============================
-    // KHI MO TRANG
-    // ==============================
-    useEffect(() => {
-        getStudents();
-    }, []);
-
-    // ==============================
-    // THEM SINH VIEN
-    // ==============================
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-
-        try {
-            const response = await fetch(API_URL, {
-                method: "POST",
-
-                headers: {
-                    "Content-Type": "application/json"
-                },
-
-                body: JSON.stringify({
-                    studentId: studentId.trim(),
-                    name: name.trim(),
-                    email: email.trim()
-                })
-            });
-
-            const data = await response.json();
-
-            if (!response.ok) {
-                alert(data.message || "Them sinh vien that bai!");
-                return;
-            }
-
-            alert("Them sinh vien thanh cong!");
-
-            // XOA FORM
-            setStudentId("");
-            setName("");
-            setEmail("");
-
-            // TAI LAI DANH SACH
-            getStudents();
-
-        } catch (error) {
-            console.error("Loi them sinh vien:", error);
-
-            alert("Khong ket noi duoc Backend!");
-        }
-    };
-
-    // ==============================
-    // CAP NHAT SINH VIEN
-    // ==============================
-    const handleUpdate = async (student) => {
-
-        const newStudentId = prompt(
-            "Nhap MSSV moi:",
-            student.studentId || ""
-        );
-
-        if (newStudentId === null) {
-            return;
-        }
-
-        const newName = prompt(
-            "Nhap ho ten moi:",
-            student.name || ""
-        );
-
-        if (newName === null) {
-            return;
-        }
-
-        const newEmail = prompt(
-            "Nhap email moi:",
-            student.email || ""
-        );
-
-        if (newEmail === null) {
-            return;
-        }
-
-        // KIEM TRA DU LIEU
-        if (
-            !newStudentId.trim() ||
-            !newName.trim() ||
-            !newEmail.trim()
-        ) {
-            alert("Vui long nhap day du thong tin!");
-            return;
-        }
-
-        try {
-            const response = await fetch(
-                `${API_URL}/${student._id}`,
-                {
-                    method: "PUT",
-
-                    headers: {
-                        "Content-Type": "application/json"
-                    },
-
-                    body: JSON.stringify({
-                        studentId: newStudentId.trim(),
-                        name: newName.trim(),
-                        email: newEmail.trim()
-                    })
-                }
-            );
-
-            const data = await response.json();
-
-            if (!response.ok) {
-                alert(data.message || "Cap nhat sinh vien that bai!");
-                return;
-            }
-
-            alert("Cap nhat sinh vien thanh cong!");
-
-            // TAI LAI DANH SACH
-            getStudents();
-
-        } catch (error) {
-            console.error("Loi cap nhat:", error);
-
-            alert("Khong ket noi duoc Backend!");
-        }
-    };
-
-    // ==============================
-    // XOA SINH VIEN
-    // ==============================
-    const handleDelete = async (id) => {
-
-        const confirmDelete = window.confirm(
-            "Ban co chac chan muon xoa sinh vien nay?"
-        );
-
-        if (!confirmDelete) {
-            return;
-        }
-
-        try {
-            const response = await fetch(
-                `${API_URL}/${id}`,
-                {
-                    method: "DELETE"
-                }
-            );
-
-            const data = await response.json();
-
-            if (!response.ok) {
-                alert(data.message || "Xoa sinh vien that bai!");
-                return;
-            }
-
-            alert("Xoa sinh vien thanh cong!");
-
-            // TAI LAI DANH SACH
-            getStudents();
-
-        } catch (error) {
-            console.error("Loi xoa:", error);
-
-            alert("Khong ket noi duoc Backend!");
-        }
-    };
-
-    // ==============================
-    // GIAO DIEN
-    // ==============================
-    return (
-        <div
-            style={{
-                textAlign: "center",
-                padding: "30px"
-            }}
-        >
-            <h1>Quan ly sinh vien</h1>
-
-            {/* ========================= */}
-            {/* FORM THEM SINH VIEN */}
-            {/* ========================= */}
-
-            <h2>Them sinh vien</h2>
-
-            <form onSubmit={handleSubmit}>
-
-                <div>
-                    <label>MSSV: </label>
-
-                    <input
-                        type="text"
-                        value={studentId}
-                        onChange={(e) =>
-                            setStudentId(e.target.value)
-                        }
-                        placeholder="Nhap MSSV"
-                        required
-                    />
-                </div>
-
-                <br />
-
-                <div>
-                    <label>Ho ten: </label>
-
-                    <input
-                        type="text"
-                        value={name}
-                        onChange={(e) =>
-                            setName(e.target.value)
-                        }
-                        placeholder="Nhap ho ten"
-                        required
-                    />
-                </div>
-
-                <br />
-
-                <div>
-                    <label>Email: </label>
-
-                    <input
-                        type="email"
-                        value={email}
-                        onChange={(e) =>
-                            setEmail(e.target.value)
-                        }
-                        placeholder="Nhap email"
-                        required
-                    />
-                </div>
-
-                <br />
-
-                <button type="submit">
-                    Them sinh vien
-                </button>
-
-            </form>
-
-            {/* ========================= */}
-            {/* DANH SACH SINH VIEN */}
-            {/* ========================= */}
-
-            <h2>Danh sach sinh vien</h2>
-
-            {loading ? (
-
-                <p>Dang tai danh sach sinh vien...</p>
-
-            ) : error ? (
-
-                <div>
-                    <p>{error}</p>
-
-                    <button onClick={getStudents}>
-                        Thu lai
-                    </button>
-                </div>
-
-            ) : students.length === 0 ? (
-
-                <p>Chua co sinh vien</p>
-
-            ) : (
-
-                <ul
-                    style={{
-                        display: "inline-block",
-                        textAlign: "left"
-                    }}
-                >
-                    {students.map((student) => (
-
-                        <li
-                            key={student._id}
-                            style={{
-                                marginBottom: "15px"
-                            }}
-                        >
-                            <strong>
-                                {student.studentId || "Khong co MSSV"}
-                            </strong>
-
-                            {" - "}
-
-                            {student.name || "Khong co ten"}
-
-                            {" - "}
-
-                            {student.email || "Khong co email"}
-
-                            {/* NUT SUA */}
-
-                            <button
-                                onClick={() =>
-                                    handleUpdate(student)
-                                }
-                                style={{
-                                    marginLeft: "10px"
-                                }}
-                            >
-                                Sua
-                            </button>
-
-                            {/* NUT XOA */}
-
-                            <button
-                                onClick={() =>
-                                    handleDelete(student._id)
-                                }
-                                style={{
-                                    marginLeft: "10px"
-                                }}
-                            >
-                                Xoa
-                            </button>
-
-                        </li>
-
-                    ))}
-                </ul>
-
-            )}
-
-        </div>
+      );
+
+      if (!response.ok) {
+        throw new Error("Không thể cập nhật sinh viên");
+      }
+
+      // Nhận dữ liệu sinh viên sau khi cập nhật
+      const updatedStudent = await response.json();
+
+      // Cập nhật sinh viên trong danh sách
+      setStudents((prevStudents) =>
+        prevStudents.map((student) =>
+          student._id === editingId
+            ? updatedStudent
+            : student
+        )
+      );
+
+      // Thoát chế độ sửa
+      setEditingId(null);
+
+      // Xóa form
+      setStudentId("");
+      setName("");
+      setEmail("");
+
+      alert("Cập nhật sinh viên thành công!");
+    } catch (err) {
+      console.error("Lỗi cập nhật:", err);
+      alert("Lỗi khi cập nhật sinh viên!");
+    }
+  };
+
+  // ================================
+  // HỦY SỬA
+  // ================================
+  const cancelEdit = () => {
+    setEditingId(null);
+
+    setStudentId("");
+    setName("");
+    setEmail("");
+  };
+
+  // ================================
+  // XÓA SINH VIÊN
+  // ================================
+  const deleteStudent = async (id) => {
+    const confirmDelete = window.confirm(
+      "Bạn có chắc chắn muốn xóa sinh viên này không?"
     );
+
+    if (!confirmDelete) {
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        `${API_URL}/${id}`,
+        {
+          method: "DELETE",
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Không thể xóa sinh viên");
+      }
+
+      // Xóa trực tiếp khỏi giao diện
+      setStudents((prevStudents) =>
+        prevStudents.filter(
+          (student) => student._id !== id
+        )
+      );
+
+      alert("Xóa sinh viên thành công!");
+    } catch (err) {
+      console.error("Lỗi xóa:", err);
+      alert("Lỗi khi xóa sinh viên!");
+    }
+  };
+
+  // ================================
+  // GIAO DIỆN
+  // ================================
+  return (
+    <div
+      style={{
+        minHeight: "100vh",
+        background: "#1f212b",
+        color: "white",
+        padding: "40px",
+        fontFamily: "Arial",
+      }}
+    >
+      <div
+        style={{
+          maxWidth: "700px",
+          margin: "auto",
+        }}
+      >
+
+        {/* TIÊU ĐỀ */}
+        <h1
+          style={{
+            textAlign: "center",
+            fontSize: "42px",
+          }}
+        >
+          Quản lý sinh viên - version 2.0
+        </h1>
+
+        {/* TIÊU ĐỀ FORM */}
+        <h2
+          style={{
+            textAlign: "center",
+          }}
+        >
+          {editingId
+            ? "Sửa sinh viên"
+            : "Thêm sinh viên"}
+        </h2>
+
+        {/* ================= FORM ================= */}
+        <form
+          onSubmit={
+            editingId
+              ? updateStudent
+              : addStudent
+          }
+        >
+
+          {/* MSSV */}
+          <input
+            type="text"
+            placeholder="Nhập MSSV"
+            value={studentId}
+            onChange={(e) =>
+              setStudentId(e.target.value)
+            }
+            style={{
+              width: "100%",
+              padding: "14px",
+              marginBottom: "12px",
+              boxSizing: "border-box",
+              borderRadius: "4px",
+              border: "1px solid #777",
+              background: "#3a3a3a",
+              color: "white",
+              fontSize: "16px",
+            }}
+          />
+
+          {/* HỌ TÊN */}
+          <input
+            type="text"
+            placeholder="Nhập họ tên"
+            value={name}
+            onChange={(e) =>
+              setName(e.target.value)
+            }
+            style={{
+              width: "100%",
+              padding: "14px",
+              marginBottom: "12px",
+              boxSizing: "border-box",
+              borderRadius: "4px",
+              border: "1px solid #777",
+              background: "#3a3a3a",
+              color: "white",
+              fontSize: "16px",
+            }}
+          />
+
+          {/* EMAIL */}
+          <input
+            type="email"
+            placeholder="Nhập email"
+            value={email}
+            onChange={(e) =>
+              setEmail(e.target.value)
+            }
+            style={{
+              width: "100%",
+              padding: "14px",
+              marginBottom: "12px",
+              boxSizing: "border-box",
+              borderRadius: "4px",
+              border: "1px solid #777",
+              background: "#3a3a3a",
+              color: "white",
+              fontSize: "16px",
+            }}
+          />
+
+          {/* NÚT THÊM / CẬP NHẬT */}
+          <button
+            type="submit"
+            style={{
+              width: "100%",
+              padding: "14px",
+              cursor: "pointer",
+              fontSize: "16px",
+              marginBottom: "10px",
+            }}
+          >
+            {editingId
+              ? "Cập nhật sinh viên"
+              : "Thêm sinh viên"}
+          </button>
+
+          {/* NÚT HỦY */}
+          {editingId && (
+            <button
+              type="button"
+              onClick={cancelEdit}
+              style={{
+                width: "100%",
+                padding: "14px",
+                cursor: "pointer",
+                fontSize: "16px",
+                marginBottom: "10px",
+              }}
+            >
+              Hủy sửa
+            </button>
+          )}
+        </form>
+
+        {/* ================= DANH SÁCH ================= */}
+
+        <h2
+          style={{
+            textAlign: "center",
+            marginTop: "20px",
+          }}
+        >
+          Danh sách sinh viên
+        </h2>
+
+        {/* ĐANG TẢI */}
+        {loading && (
+          <p
+            style={{
+              textAlign: "center",
+            }}
+          >
+            Đang tải dữ liệu...
+          </p>
+        )}
+
+        {/* LỖI BACKEND */}
+        {error && (
+          <div
+            style={{
+              textAlign: "center",
+            }}
+          >
+            <p>{error}</p>
+
+            <button onClick={fetchStudents}>
+              Thử lại
+            </button>
+          </div>
+        )}
+
+        {/* KHÔNG CÓ SINH VIÊN */}
+        {!loading &&
+          !error &&
+          students.length === 0 && (
+            <p
+              style={{
+                textAlign: "center",
+              }}
+            >
+              Chưa có sinh viên nào
+            </p>
+          )}
+
+        {/* DANH SÁCH */}
+        {!loading &&
+          !error &&
+          students.map((student) => (
+            <div
+              key={student._id}
+              style={{
+                background: "#2c2f3a",
+                padding: "20px",
+                marginTop: "15px",
+                borderRadius: "10px",
+                textAlign: "center",
+              }}
+            >
+
+              {/* MSSV */}
+              <p
+                style={{
+                  fontSize: "20px",
+                  margin: "8px",
+                }}
+              >
+                <strong>MSSV:</strong>{" "}
+                {student.studentId}
+              </p>
+
+              {/* HỌ TÊN */}
+              <p
+                style={{
+                  fontSize: "20px",
+                  margin: "8px",
+                }}
+              >
+                <strong>Họ tên:</strong>{" "}
+                {student.name}
+              </p>
+
+              {/* EMAIL */}
+              <p
+                style={{
+                  fontSize: "20px",
+                  margin: "8px",
+                }}
+              >
+                <strong>Email:</strong>{" "}
+                {student.email}
+              </p>
+
+              {/* NÚT SỬA */}
+              <button
+                onClick={() =>
+                  editStudent(student)
+                }
+                style={{
+                  marginRight: "10px",
+                  padding: "8px 15px",
+                  cursor: "pointer",
+                }}
+              >
+                Sửa
+              </button>
+
+              {/* NÚT XÓA */}
+              <button
+                onClick={() =>
+                  deleteStudent(student._id)
+                }
+                style={{
+                  padding: "8px 15px",
+                  cursor: "pointer",
+                }}
+              >
+                Xóa
+              </button>
+
+            </div>
+          ))}
+      </div>
+    </div>
+  );
 }
 
 export default App;
