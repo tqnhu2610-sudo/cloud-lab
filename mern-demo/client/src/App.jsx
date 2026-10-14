@@ -42,6 +42,8 @@ function App() {
 
   const [submitting, setSubmitting] = useState(false);
   const [editingId, setEditingId] = useState(null);
+  const [studentToDelete, setStudentToDelete] = useState(null);
+  const [deleting, setDeleting] = useState(false);
 
 
 
@@ -207,53 +209,33 @@ function App() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  const handleDelete = async (id) => {
-
-    if (!window.confirm("Bạn có chắc chắn muốn xóa sinh viên này?")) {
-
-      return;
-
-    }
-
-
-
-    try {
-
-      const response = await fetch(`${STUDENTS_API}/${id}`, {
-
-        method: "DELETE",
-
-      });
-
-
-
-      const data = await response.json();
-
-
-
-      if (!response.ok) {
-
-        throw new Error(data.message || "Xóa sinh viên thất bại.");
-
-      }
-
-
-
-      showNotice("success", "Xóa sinh viên thành công!");
-
-      await getStudents();
-
-    } catch (err) {
-
-      console.error("Lỗi xóa:", err);
-
-      showNotice("error", err.message || "Không kết nối được Backend.");
-
-    }
-
+  const handleDelete = (student) => {
+    setStudentToDelete(student);
   };
 
+  const confirmDelete = async () => {
+    if (!studentToDelete) return;
 
+    try {
+      setDeleting(true);
+      const response = await fetch(`${STUDENTS_API}/${studentToDelete._id}`, {
+        method: "DELETE",
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.message || "Xóa sinh viên thất bại.");
+      }
+      if (editingId === studentToDelete._id) resetForm();
+      setStudentToDelete(null);
+      showNotice("success", "Xóa sinh viên thành công!");
+      await getStudents();
+    } catch (err) {
+      console.error("Lỗi xóa:", err);
+      showNotice("error", err.message || "Không kết nối được Backend.");
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   const filteredStudents = students.filter((student) => {
 
@@ -757,7 +739,7 @@ function App() {
 
                             type="button"
 
-                            onClick={() => handleDelete(student._id)}
+                            onClick={() => handleDelete(student)}
 
                           >
 
@@ -802,6 +784,38 @@ function App() {
       </main>
 
 
+
+      {studentToDelete && (
+        <div
+          role="presentation"
+          onClick={() => !deleting && setStudentToDelete(null)}
+          style={{ position: "fixed", inset: 0, zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: "20px", background: "rgba(15, 23, 42, 0.58)", backdropFilter: "blur(4px)" }}
+        >
+          <section
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="delete-dialog-title"
+            onClick={(e) => e.stopPropagation()}
+            style={{ width: "100%", maxWidth: "440px", padding: "28px", borderRadius: "20px", background: "#ffffff", color: "#1e293b", boxShadow: "0 24px 80px rgba(15, 23, 42, 0.28)" }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: "14px", marginBottom: "18px" }}>
+              <div style={{ width: "48px", height: "48px", flexShrink: 0, display: "grid", placeItems: "center", borderRadius: "14px", background: "#fee2e2", color: "#dc2626", fontSize: "25px", fontWeight: 700 }}>!</div>
+              <div>
+                <h2 id="delete-dialog-title" style={{ margin: 0, fontSize: "20px" }}>Xác nhận xóa sinh viên</h2>
+                <p style={{ margin: "5px 0 0", color: "#64748b", fontSize: "13px" }}>Thao tác này sẽ xóa dữ liệu khỏi hệ thống.</p>
+              </div>
+            </div>
+            <p style={{ lineHeight: 1.65, margin: "0 0 24px", color: "#475569" }}>
+              Bạn có chắc chắn muốn xóa sinh viên <strong style={{ color: "#0f172a" }}>{studentToDelete.name || "Chưa có tên"}</strong>
+              {studentToDelete.studentId ? <> (MSSV: <strong style={{ color: "#0f172a" }}>{studentToDelete.studentId}</strong>)</> : null}?
+            </p>
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px", flexWrap: "wrap" }}>
+              <button type="button" disabled={deleting} onClick={() => setStudentToDelete(null)} style={{ padding: "11px 17px", border: "1px solid #cbd5e1", borderRadius: "10px", background: "#fff", color: "#334155", fontWeight: 600, cursor: deleting ? "not-allowed" : "pointer" }}>Hủy</button>
+              <button type="button" disabled={deleting} onClick={confirmDelete} style={{ padding: "11px 17px", border: "none", borderRadius: "10px", background: "#dc2626", color: "#fff", fontWeight: 600, cursor: deleting ? "not-allowed" : "pointer", opacity: deleting ? 0.7 : 1 }}>{deleting ? "Đang xóa..." : "Xóa sinh viên"}</button>
+            </div>
+          </section>
+        </div>
+      )}
 
       <footer className="footer">
 
