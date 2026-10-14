@@ -1,3 +1,4 @@
+
 import express from "express";
 import mongoose from "mongoose";
 import dotenv from "dotenv";
@@ -7,67 +8,62 @@ import Student from "./models/Student.js";
 dotenv.config();
 
 const app = express();
-
-// ===============================
-// MIDDLEWARE
-// ===============================
-
-app.use(cors());
-app.use(express.json());
-
-// ===============================
-// CẤU HÌNH
-// ===============================
-
 const PORT = process.env.PORT || 5000;
 const MONGODB_URI = process.env.MONGODB_URI;
 
-// ===============================
-// KIỂM TRA BACKEND
-// ===============================
+// CORS: cho phep frontend local va Render
+const allowedOrigins = [
+  process.env.CLIENT_URL,
+  "http://localhost:5173",
+  "http://localhost:5000",
+].filter(Boolean);
 
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      if (
+        !origin ||
+        allowedOrigins.includes(origin) ||
+        process.env.NODE_ENV !== "production"
+      ) {
+        return callback(null, true);
+      }
+
+      return callback(new Error("Origin khong duoc phep boi CORS"));
+    },
+  })
+);
+
+app.use(express.json());
+
+// Kiem tra backend
 app.get("/", (req, res) => {
-  res.send("Backend MERN đang hoạt động!");
+  res.send("Backend MERN dang hoat dong!");
 });
 
 app.get("/api/hello", (req, res) => {
-  res.json({
-    message: "Backend đang hoạt động!",
-  });
+  res.json({ message: "Backend dang hoat dong!" });
 });
 
-// ===============================
-// LẤY DANH SÁCH SINH VIÊN
-// GET /api/students
-// ===============================
-
+// GET: Lay danh sach sinh vien
 app.get("/api/students", async (req, res) => {
   try {
     const students = await Student.find();
-
     res.status(200).json(students);
   } catch (error) {
-    console.error("Lỗi lấy danh sách sinh viên:", error);
-
-    res.status(500).json({
-      message: error.message,
-    });
+    console.error("Loi lay danh sach sinh vien:", error);
+    res.status(500).json({ message: error.message });
   }
 });
 
-// ===============================
-// THÊM SINH VIÊN
-// POST /api/students
-// ===============================
-
+// POST: Them sinh vien
 app.post("/api/students", async (req, res) => {
   try {
     const { studentId, name, email } = req.body;
 
-    // KIỂM TRA DỮ LIỆU
     if (!studentId || !name || !email) {
       return res.status(400).json({
-        message: "Vui lòng nhập đầy đủ MSSV, họ tên và email",
+        message: "Vui long nhap day du MSSV, ho ten va email",
       });
     }
 
@@ -79,105 +75,58 @@ app.post("/api/students", async (req, res) => {
 
     res.status(201).json(student);
   } catch (error) {
-    console.error("Lỗi thêm sinh viên:", error);
-
-    res.status(400).json({
-      message: error.message,
-    });
+    console.error("Loi them sinh vien:", error);
+    res.status(400).json({ message: error.message });
   }
 });
 
-// CẬP NHẬT SINH VIÊN
-const updateStudent = async (e) => {
-  e.preventDefault();
-
-  if (!studentId || !name || !email) {
-    alert("Vui lòng nhập đầy đủ thông tin!");
-    return;
-  }
-
+// PUT: Cap nhat sinh vien
+app.put("/api/students/:id", async (req, res) => {
   try {
-    const response = await fetch(`${API_URL}/${editingId}`, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        studentId,
-        name,
-        email,
-      }),
-    });
+    const { studentId, name, email } = req.body;
 
-    if (!response.ok) {
-      throw new Error("Không thể cập nhật sinh viên");
-    }
-
-    const updatedStudent = await response.json();
-
-    setStudents((prevStudents) =>
-      prevStudents.map((student) =>
-        student._id === editingId
-          ? updatedStudent
-          : student
-      )
-    );
-
-    // Xóa trạng thái sửa
-    setEditingId(null);
-    setStudentId("");
-    setName("");
-    setEmail("");
-
-  } catch (err) {
-    console.error(err);
-    alert("Lỗi khi cập nhật sinh viên!");
-  }
-};
-
-// HỦY SỬA
-const cancelEdit = () => {
-  setEditingId(null);
-  setStudentId("");
-  setName("");
-  setEmail("");
-};
-
-// ===============================
-// XÓA SINH VIÊN
-// DELETE /api/students/:id
-// ===============================
-
-app.delete("/api/students/:id", async (req, res) => {
-  try {
-    const student = await Student.findByIdAndDelete(
-      req.params.id
+    const student = await Student.findByIdAndUpdate(
+      req.params.id,
+      { studentId, name, email },
+      { new: true, runValidators: true }
     );
 
     if (!student) {
       return res.status(404).json({
-        message: "Không tìm thấy sinh viên",
+        message: "Khong tim thay sinh vien",
+      });
+    }
+
+    res.status(200).json(student);
+  } catch (error) {
+    console.error("Loi cap nhat sinh vien:", error);
+    res.status(400).json({ message: error.message });
+  }
+});
+
+// DELETE: Xoa sinh vien
+app.delete("/api/students/:id", async (req, res) => {
+  try {
+    const student = await Student.findByIdAndDelete(req.params.id);
+
+    if (!student) {
+      return res.status(404).json({
+        message: "Khong tim thay sinh vien",
       });
     }
 
     res.status(200).json({
-      message: "Xóa sinh viên thành công",
+      message: "Xoa sinh vien thanh cong",
     });
   } catch (error) {
-    console.error("Lỗi xóa sinh viên:", error);
-
-    res.status(400).json({
-      message: error.message,
-    });
+    console.error("Loi xoa sinh vien:", error);
+    res.status(400).json({ message: error.message });
   }
 });
 
-// ===============================
-// KẾT NỐI MONGODB VÀ CHẠY SERVER
-// ===============================
-
+// Ket noi MongoDB va khoi dong server
 if (!MONGODB_URI) {
-  console.error("Lỗi: MONGODB_URI chưa được khai báo!");
+  console.error("Loi: MONGODB_URI chua duoc khai bao!");
   process.exit(1);
 }
 
@@ -187,9 +136,10 @@ mongoose
     console.log("MongoDB Atlas connected successfully!");
 
     app.listen(PORT, "0.0.0.0", () => {
-      console.log(`Server đang chạy tại port ${PORT}`);
+      console.log(`Server dang chay tai port ${PORT}`);
     });
   })
   .catch((error) => {
     console.error("MongoDB connection error:", error);
+    process.exit(1);
   });
